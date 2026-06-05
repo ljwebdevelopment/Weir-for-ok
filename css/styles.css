@@ -508,7 +508,7 @@ p + p { margin-top: .9rem; }
   width: 100%;
   aspect-ratio: 3/4;
   object-fit: cover;
-  object-position: center top;
+  object-position: center center;
 }
 
 /* District badge */
@@ -577,7 +577,7 @@ p + p { margin-top: .9rem; }
 .photo-stack-secondary img {
   aspect-ratio: 4/3;
   object-fit: cover;
-  object-position: center top;
+  object-position: center;
 }
 
 /* ---------------------------------------------------------------
@@ -642,6 +642,27 @@ p + p { margin-top: .9rem; }
 }
 
 /* ---------------------------------------------------------------
+   10b. Full-bleed photo mosaic strip
+--------------------------------------------------------------- */
+.photo-mosaic {
+  display: flex;
+  gap: 3px;
+  overflow: hidden;
+  height: clamp(160px, 22vw, 280px);
+}
+.photo-mosaic img {
+  flex: 1;
+  min-width: 0;
+  object-fit: cover;
+  object-position: center center;
+  transition: transform .5s var(--ease);
+}
+.photo-mosaic img:hover {
+  transform: scale(1.04);
+  z-index: 1;
+}
+
+/* ---------------------------------------------------------------
    11. Plan / How We Move Forward
 --------------------------------------------------------------- */
 .plan-grid {
@@ -688,7 +709,7 @@ p + p { margin-top: .9rem; }
   box-shadow: var(--shadow-lg);
   aspect-ratio: 3/4;
   object-fit: cover;
-  object-position: center top;
+  object-position: center center;
 }
 
 /* ---------------------------------------------------------------
