@@ -7,7 +7,7 @@
  *  HOW TO DEPLOY (do this once):
  *  ─────────────────────────────
  *  1. Open your Google Sheet:
- *     https://docs.google.com/spreadsheets/d/1uEHEmSjGEDX4SWyFGhUF7eGxkj2GIOQRVWQH7Ao5m9g
+ *     https://docs.google.com/spreadsheets/d/1AX3oePb47PTTJhsb0GTEOsPcU46dhdQ15fAnlWGeZmk
  *
  *  2. In the menu bar, click:
  *        Extensions → Apps Script
@@ -57,7 +57,7 @@
 /* ---------------------------------------------------------------
    Configuration
 --------------------------------------------------------------- */
-var SHEET_ID   = '1uEHEmSjGEDX4SWyFGhUF7eGxkj2GIOQRVWQH7Ao5m9g';
+var SHEET_ID   = '1AX3oePb47PTTJhsb0GTEOsPcU46dhdQ15fAnlWGeZmk';
 var SHEET_NAME = 'wier';   // must match the tab name in your Google Sheet exactly
 
 var HEADERS = [

@@ -33,7 +33,7 @@ The volunteer and contact forms are wired to submit to a Google Apps Script Web 
 1. Open the campaign Google Sheet:
 
    ```text
-   https://docs.google.com/spreadsheets/d/1uEHEmSjGEDX4SWyFGhUF7eGxkj2GIOQRVWQH7Ao5m9g
+   https://docs.google.com/spreadsheets/d/1AX3oePb47PTTJhsb0GTEOsPcU46dhdQ15fAnlWGeZmk/edit?gid=0#gid=0
    ```
 
 2. Confirm the Sheet has a tab named exactly:
