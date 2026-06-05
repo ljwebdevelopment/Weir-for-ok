@@ -692,6 +692,91 @@ p + p { margin-top: .9rem; }
 }
 
 /* ---------------------------------------------------------------
+   12a. Newsletter Strip
+--------------------------------------------------------------- */
+.newsletter-strip {
+  background: var(--blue-light);
+  border-top: 3px solid var(--blue);
+  border-bottom: 3px solid var(--blue);
+  padding: clamp(2.5rem, 5vw, 4rem) 0;
+}
+
+.newsletter-inner {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: clamp(1.5rem, 5vw, 4rem);
+  align-items: center;
+}
+
+.newsletter-text h2 {
+  font-size: clamp(1.35rem, 3vw, 1.85rem);
+  color: var(--blue-dark);
+  margin-bottom: .5rem;
+}
+.newsletter-text p {
+  font-size: .95rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+.newsletter-fields {
+  display: flex;
+  gap: .65rem;
+  flex-wrap: wrap;
+}
+.nl-field { flex: 1; min-width: 160px; }
+.nl-field input {
+  width: 100%;
+  padding: .72rem .95rem;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  font-family: var(--font-ui);
+  font-size: .95rem;
+  color: var(--text);
+  background: var(--white);
+  outline: none;
+  transition: border-color var(--speed), box-shadow var(--speed);
+}
+.nl-field input::placeholder { color: var(--gray-400); }
+.nl-field input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(26,58,140,.12);
+}
+.nl-field input.invalid {
+  border-color: #DC2626;
+  box-shadow: 0 0 0 3px rgba(220,38,38,.1);
+}
+
+.newsletter-fields .btn {
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.nl-feedback {
+  margin-top: .85rem;
+  width: 100%;
+}
+
+/* Screen-reader-only labels */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 720px) {
+  .newsletter-inner { grid-template-columns: 1fr; }
+  .newsletter-fields { flex-direction: column; }
+  .newsletter-fields .btn { width: 100%; }
+}
+
+/* ---------------------------------------------------------------
    12. Forms (shared)
 --------------------------------------------------------------- */
 .form-card {
@@ -1099,7 +1184,10 @@ p + p { margin-top: .9rem; }
 --------------------------------------------------------------- */
 @media (max-width: 640px) {
 
-  /* Hero */
+  /* Hero — hide logo on mobile so it doesn't cover Christopher's face.
+     The nav logo is always visible, so nothing is lost. */
+  .hero-logo { display: none; }
+
   .hero-actions {
     flex-direction: column;
     align-items: flex-start;
