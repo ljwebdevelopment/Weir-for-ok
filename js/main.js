@@ -25,7 +25,7 @@
    Until you paste the URL, forms will show a friendly error message
    and tell the user to email wiercampaign@gmail.com.
 ================================================================ */
-const SCRIPT_URL = ''; // ← PASTE YOUR WEB APP URL HERE
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxkpzJboi3qpq4i19CUlwHJmy-HuRLNVWeaq5PTvTD84wBk77fzC2s1Wq-QC31ScSVd/exec';
 
 /* ================================================================
    NAVIGATION
