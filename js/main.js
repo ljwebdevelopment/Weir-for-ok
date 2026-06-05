@@ -1,74 +1,314 @@
 /**
- * Christopher Wier for Oklahoma House District 4
- * Campaign Website – main.js
+ * ================================================================
+ *  Christopher Wier for Oklahoma House District 4
+ *  Campaign Website — main.js
+ * ================================================================
  *
- * Handles:
- *  - Sticky / transparent navigation
- *  - Mobile hamburger menu
- *  - Form validation, submission, success/error states
- *  - Google Sheets integration via Google Apps Script Web App
- *  - Scroll-reveal animations
+ *  ARCHITECTURE OVERVIEW
+ *  ---------------------
+ *  All three campaign forms (Volunteer, Contact, Newsletter) route
+ *  through a single shared utility layer:
+ *
+ *    submitToSheet(payload)     — sends data to Google Apps Script
+ *    validateForm(form)         — highlights required fields
+ *    setSubmitState(btn, bool)  — loading / idle toggle
+ *    showFeedback(ok, err, typ) — success / error message toggle
+ *    registerForm(config)       — wires up any form with one call
+ *
+ *  To connect a new form in the future:
+ *    1. Add the <form> to index.html with the standard markup.
+ *    2. Call registerForm({ ... }) at the bottom of this file.
+ *    3. No other changes needed.
+ *
+ *  WHERE THE ENDPOINT IS CONFIGURED
+ *  ----------------------------------
+ *  Line 40 below — SCRIPT_URL.
+ *  After deploying the Google Apps Script Web App, paste the URL there.
+ *  The script file is: google-apps-script.js
+ *
+ *  SECRETS
+ *  -------
+ *  The Apps Script Web App URL is a public endpoint (no credentials
+ *  embedded). The Sheet ID lives only inside the Apps Script, not here.
+ *
+ *  GOOGLE SHEET
+ *  ------------
+ *  Sheet ID  : 1AX3oePb47PTTJhsb0GTEOsPcU46dhdQ15fAnlWGeZmk
+ *  Tab name  : wier
+ *  Columns   : Timestamp | Form Type | Name | Email | Phone |
+ *              City | How They Want To Help | Message | Source Page
+ * ================================================================
  */
 
 'use strict';
 
 /* ================================================================
-   GOOGLE APPS SCRIPT  WEB APP URL
+   ENDPOINT CONFIGURATION
    ================================================================
-   After you deploy your Google Apps Script as a Web App
-   (see google-apps-script.js for full instructions),
-   paste the deployment URL here.
-
-   Example:
-     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycb.../exec';
-
-   Until you paste the URL, forms will show a friendly error message
-   and tell the user to email wiercampaign@gmail.com.
+   Paste your Google Apps Script Web App URL here.
+   How to get it: follow the steps in google-apps-script.js, then
+   Deploy → New Deployment → Web App → copy the URL.
 ================================================================ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxkpzJboi3qpq4i19CUlwHJmy-HuRLNVWeaq5PTvTD84wBk77fzC2s1Wq-QC31ScSVd/exec';
 
 /* ================================================================
-   NAVIGATION
+   FORM SERVICE  (shared utilities used by every form)
 ================================================================ */
-const header   = document.getElementById('site-header');
-const hamburger = document.getElementById('hamburger');
-const navMenu  = document.getElementById('nav-menu');
 
-function setHeaderState() {
-  if (window.scrollY > 60) {
-    header.classList.remove('is-transparent');
-    header.classList.add('is-scrolled');
-  } else {
-    header.classList.remove('is-scrolled');
-    header.classList.add('is-transparent');
+/**
+ * POST a payload to the Google Apps Script Web App.
+ *
+ * Uses Content-Type: text/plain to avoid a CORS preflight request
+ * (Apps Script does not respond to OPTIONS). With mode: 'no-cors'
+ * the response is opaque — we cannot read it — but the data is
+ * written to the sheet if the script received the request.
+ *
+ * @param {Object} payload  - Data to send (see column mapping above)
+ * @throws {Error}          - On network failure or missing URL
+ */
+async function submitToSheet(payload) {
+  if (!SCRIPT_URL) {
+    throw new Error('SCRIPT_URL is not configured in main.js');
   }
+
+  await fetch(SCRIPT_URL, {
+    method:  'POST',
+    mode:    'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body:    JSON.stringify(payload),
+  });
+  // no-cors → response is opaque; absence of a thrown error = success
 }
 
-// Initialize immediately so there's no flash
+/**
+ * Validate all [required] fields in a form.
+ * Adds/removes the 'invalid' CSS class on each field.
+ *
+ * @param  {HTMLFormElement} form
+ * @returns {boolean} true if all required fields pass
+ */
+function validateForm(form) {
+  let valid = true;
+
+  form.querySelectorAll('[required]').forEach(field => {
+    const val = field.value.trim();
+    let ok = val.length > 0;
+
+    if (field.type === 'email' && ok) {
+      ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+    }
+    if (field.tagName === 'SELECT' && ok) {
+      ok = val !== '';
+    }
+
+    field.classList.toggle('invalid', !ok);
+    if (!ok) valid = false;
+  });
+
+  return valid;
+}
+
+/**
+ * Toggle a submit button between idle and loading states.
+ *
+ * @param {HTMLButtonElement} btn
+ * @param {boolean}           loading
+ */
+function setSubmitState(btn, loading) {
+  btn.disabled = loading;
+  const label   = btn.querySelector('.btn-label');
+  const spinner = btn.querySelector('.btn-spinner');
+  if (label)   label.hidden   = loading;
+  if (spinner) spinner.hidden = !loading;
+}
+
+/**
+ * Show the success or error feedback element, hide the other.
+ *
+ * @param {HTMLElement} successEl
+ * @param {HTMLElement} errorEl
+ * @param {'success'|'error'} type
+ */
+function showFeedback(successEl, errorEl, type) {
+  if (successEl) successEl.hidden = (type !== 'success');
+  if (errorEl)   errorEl.hidden   = (type !== 'error');
+  const target = type === 'success' ? successEl : errorEl;
+  if (target) target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/**
+ * Build the standard payload object sent to the sheet.
+ * All fields are optional except timestamp, formType, and sourcePage
+ * which are populated automatically.
+ *
+ * @param {string}  formType  - e.g. 'Volunteer', 'Contact', 'Newsletter'
+ * @param {Object}  fields    - Key/value pairs from the form
+ * @returns {Object}
+ */
+function buildPayload(formType, fields) {
+  return {
+    timestamp:  new Date().toISOString(),   // auto
+    formType,                               // auto
+    name:       fields.name    || '',
+    email:      fields.email   || '',
+    phone:      fields.phone   || '',
+    city:       fields.city    || '',
+    howHelp:    fields.howHelp || '',
+    message:    fields.message || '',
+    sourcePage: window.location.href,       // auto
+  };
+}
+
+/**
+ * Wire up a campaign form with one call.
+ * This is the single entry point for adding any new form.
+ *
+ * @param {Object} config
+ * @param {string}   config.formId        - id of the <form> element
+ * @param {string}   config.submitId      - id of the submit <button>
+ * @param {string}   config.successId     - id of the success feedback element
+ * @param {string}   config.errorId       - id of the error feedback element
+ * @param {string}   config.formType      - value written to "Form Type" column
+ * @param {Function} config.getFields     - (form) => { name, email, ... }
+ */
+function registerForm({ formId, submitId, successId, errorId, formType, getFields }) {
+  const form    = document.getElementById(formId);
+  const btn     = document.getElementById(submitId);
+  const success = document.getElementById(successId);
+  const error   = document.getElementById(errorId);
+
+  if (!form || !btn) return; // element not on this page — silently skip
+
+  let busy = false; // prevents duplicate submissions on double-click
+
+  // Clear invalid state when user starts correcting a field
+  form.querySelectorAll('input, select, textarea').forEach(field => {
+    field.addEventListener('input',  () => field.classList.remove('invalid'));
+    field.addEventListener('change', () => field.classList.remove('invalid'));
+  });
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (busy) return; // guard against double-click
+
+    // Reset any previous feedback
+    if (success) success.hidden = true;
+    if (error)   error.hidden   = true;
+    form.querySelectorAll('.invalid').forEach(f => f.classList.remove('invalid'));
+
+    // Client-side validation
+    if (!validateForm(form)) {
+      const first = form.querySelector('.invalid');
+      if (first) first.focus();
+      return;
+    }
+
+    // Lock form while submitting
+    busy = true;
+    setSubmitState(btn, true);
+
+    try {
+      const payload = buildPayload(formType, getFields(form));
+      await submitToSheet(payload);
+
+      setSubmitState(btn, false);
+      showFeedback(success, error, 'success');
+      form.reset();
+      // keep busy=true after success — prevents re-submission of same data
+    } catch (err) {
+      console.error(`[${formType} form] Submission error:`, err);
+      setSubmitState(btn, false);
+      showFeedback(success, error, 'error');
+      busy = false; // allow retry on network error
+    }
+  });
+}
+
+/* ================================================================
+   FORM REGISTRATIONS
+   ================================================================
+   Add one registerForm() call per form. That's the only change
+   needed when a new campaign form is added to the HTML.
+================================================================ */
+
+// --- Volunteer / Join the Team ---
+registerForm({
+  formId:    'volunteer-form',
+  submitId:  'v-submit',
+  successId: 'v-success',
+  errorId:   'v-error',
+  formType:  'Volunteer',
+  getFields: form => ({
+    name:    form.querySelector('[name="name"]')?.value.trim(),
+    email:   form.querySelector('[name="email"]')?.value.trim(),
+    phone:   form.querySelector('[name="phone"]')?.value.trim(),
+    city:    form.querySelector('[name="city"]')?.value.trim(),
+    howHelp: form.querySelector('[name="howHelp"]')?.value,
+    message: form.querySelector('[name="message"]')?.value.trim(),
+  }),
+});
+
+// --- Contact ---
+registerForm({
+  formId:    'contact-form',
+  submitId:  'c-submit',
+  successId: 'c-success',
+  errorId:   'c-error',
+  formType:  'Contact',
+  getFields: form => ({
+    name:    form.querySelector('[name="name"]')?.value.trim(),
+    email:   form.querySelector('[name="email"]')?.value.trim(),
+    phone:   form.querySelector('[name="phone"]')?.value.trim(),
+    message: form.querySelector('[name="message"]')?.value.trim(),
+  }),
+});
+
+// --- Newsletter Signup ---
+registerForm({
+  formId:    'newsletter-form',
+  submitId:  'nl-submit',
+  successId: 'nl-success',
+  errorId:   'nl-error',
+  formType:  'Newsletter',
+  getFields: form => ({
+    name:  form.querySelector('[name="name"]')?.value.trim(),
+    email: form.querySelector('[name="email"]')?.value.trim(),
+  }),
+});
+
+/* ================================================================
+   NAVIGATION
+================================================================ */
+const header    = document.getElementById('site-header');
+const hamburger = document.getElementById('hamburger');
+const navMenu   = document.getElementById('nav-menu');
+
+function setHeaderState() {
+  const scrolled = window.scrollY > 60;
+  header.classList.toggle('is-scrolled',     scrolled);
+  header.classList.toggle('is-transparent', !scrolled);
+}
+
 setHeaderState();
 window.addEventListener('scroll', setHeaderState, { passive: true });
 
-// Hamburger toggle
 hamburger.addEventListener('click', () => {
-  const expanded = hamburger.getAttribute('aria-expanded') === 'true';
-  hamburger.setAttribute('aria-expanded', String(!expanded));
-  navMenu.classList.toggle('is-open', !expanded);
-  document.body.style.overflow = !expanded ? 'hidden' : '';
+  const open = hamburger.getAttribute('aria-expanded') !== 'true';
+  hamburger.setAttribute('aria-expanded', String(open));
+  navMenu.classList.toggle('is-open', open);
+  document.body.style.overflow = open ? 'hidden' : '';
 });
 
-// Close mobile menu when a link is clicked
 navMenu.querySelectorAll('.nav-link').forEach(link => {
   link.addEventListener('click', closeMenu);
 });
 
-// Close menu on outside click
 document.addEventListener('click', e => {
   if (navMenu.classList.contains('is-open') && !header.contains(e.target)) {
     closeMenu();
   }
 });
 
-// Close menu on Escape key
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && navMenu.classList.contains('is-open')) {
     closeMenu();
@@ -83,16 +323,31 @@ function closeMenu() {
 }
 
 /* ================================================================
-   SCROLL-REVEAL  (light — uses IntersectionObserver)
+   SMOOTH SCROLL  (offset accounts for fixed nav height)
 ================================================================ */
-function initReveal() {
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function (e) {
+    const id = this.getAttribute('href').slice(1);
+    if (!id) return;
+    const target = document.getElementById(id);
+    if (!target) return;
+    e.preventDefault();
+    const navH = header.getBoundingClientRect().height;
+    const top  = target.getBoundingClientRect().top + window.scrollY - navH;
+    window.scrollTo({ top, behavior: 'smooth' });
+  });
+});
+
+/* ================================================================
+   SCROLL-REVEAL  (IntersectionObserver, graceful fallback)
+================================================================ */
+(function initReveal() {
   const targets = document.querySelectorAll(
-    '.issue-card, .plan-text-col, .about-text-col, .donate-text'
+    '.issue-card, .plan-text-col, .about-text-col, .donate-text, .newsletter-text'
   );
   targets.forEach(el => el.classList.add('reveal'));
 
   if (!('IntersectionObserver' in window)) {
-    // Fallback for very old browsers
     targets.forEach(el => el.classList.add('is-visible'));
     return;
   }
@@ -107,209 +362,4 @@ function initReveal() {
   }, { threshold: 0.12 });
 
   targets.forEach(el => observer.observe(el));
-}
-initReveal();
-
-/* ================================================================
-   FORM UTILITIES
-================================================================ */
-
-/** Validate all required fields. Returns true if form is valid. */
-function validateForm(form) {
-  let valid = true;
-
-  form.querySelectorAll('[required]').forEach(field => {
-    const val = field.value.trim();
-    let fieldValid = val.length > 0;
-
-    if (field.type === 'email' && fieldValid) {
-      fieldValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
-    }
-    if (field.tagName === 'SELECT' && fieldValid) {
-      fieldValid = val !== '';
-    }
-
-    field.classList.toggle('invalid', !fieldValid);
-    if (!fieldValid) valid = false;
-  });
-
-  return valid;
-}
-
-/** Set a form's submit button into loading / idle state. */
-function setSubmitState(btn, loading) {
-  const label   = btn.querySelector('.btn-label');
-  const spinner = btn.querySelector('.btn-spinner');
-  btn.disabled  = loading;
-  label.hidden  = loading;
-  spinner.hidden = !loading;
-}
-
-/** Show a feedback element and hide the other. */
-function showFeedback(successEl, errorEl, type) {
-  successEl.hidden = (type !== 'success');
-  errorEl.hidden   = (type !== 'error');
-  const target = type === 'success' ? successEl : errorEl;
-  target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-/**
- * Submit form data to Google Apps Script.
- * Uses Content-Type: text/plain to avoid preflight CORS issues.
- * The response is opaque (no-cors mode) but the data reaches the sheet.
- */
-async function submitToSheet(payload) {
-  if (!SCRIPT_URL) {
-    // No URL configured yet — treat as an error so user knows
-    throw new Error('Google Script URL not configured');
-  }
-
-  await fetch(SCRIPT_URL, {
-    method:  'POST',
-    mode:    'no-cors', // Required for Apps Script; response will be opaque
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body:    JSON.stringify(payload),
-  });
-  // With no-cors, we can't inspect the response.
-  // If fetch() didn't throw, the request was dispatched successfully.
-}
-
-/* ================================================================
-   FORM: VOLUNTEER
-================================================================ */
-(function setupVolunteerForm() {
-  const form    = document.getElementById('volunteer-form');
-  const btn     = document.getElementById('v-submit');
-  const success = document.getElementById('v-success');
-  const error   = document.getElementById('v-error');
-  if (!form) return;
-
-  let busy = false;
-
-  form.addEventListener('submit', async e => {
-    e.preventDefault();
-    if (busy) return;
-
-    // Reset feedback
-    success.hidden = true;
-    error.hidden   = true;
-
-    // Remove stale invalid states
-    form.querySelectorAll('.invalid').forEach(f => f.classList.remove('invalid'));
-
-    if (!validateForm(form)) {
-      const firstInvalid = form.querySelector('.invalid');
-      if (firstInvalid) firstInvalid.focus();
-      return;
-    }
-
-    busy = true;
-    setSubmitState(btn, true);
-
-    const payload = {
-      timestamp:  new Date().toISOString(),
-      formType:   'Volunteer',
-      name:       form.querySelector('[name="name"]').value.trim(),
-      email:      form.querySelector('[name="email"]').value.trim(),
-      phone:      form.querySelector('[name="phone"]').value.trim(),
-      city:       form.querySelector('[name="city"]').value.trim(),
-      howHelp:    form.querySelector('[name="howHelp"]').value,
-      message:    form.querySelector('[name="message"]').value.trim(),
-      sourcePage: window.location.href,
-    };
-
-    try {
-      await submitToSheet(payload);
-      setSubmitState(btn, false);
-      showFeedback(success, error, 'success');
-      form.reset();
-    } catch (err) {
-      console.error('Volunteer form error:', err);
-      setSubmitState(btn, false);
-      showFeedback(success, error, 'error');
-      busy = false;
-    }
-  });
-
-  // Clear invalid state on user input
-  form.querySelectorAll('input, select, textarea').forEach(field => {
-    field.addEventListener('input', () => field.classList.remove('invalid'));
-    field.addEventListener('change', () => field.classList.remove('invalid'));
-  });
 })();
-
-/* ================================================================
-   FORM: CONTACT
-================================================================ */
-(function setupContactForm() {
-  const form    = document.getElementById('contact-form');
-  const btn     = document.getElementById('c-submit');
-  const success = document.getElementById('c-success');
-  const error   = document.getElementById('c-error');
-  if (!form) return;
-
-  let busy = false;
-
-  form.addEventListener('submit', async e => {
-    e.preventDefault();
-    if (busy) return;
-
-    success.hidden = true;
-    error.hidden   = true;
-    form.querySelectorAll('.invalid').forEach(f => f.classList.remove('invalid'));
-
-    if (!validateForm(form)) {
-      const firstInvalid = form.querySelector('.invalid');
-      if (firstInvalid) firstInvalid.focus();
-      return;
-    }
-
-    busy = true;
-    setSubmitState(btn, true);
-
-    const payload = {
-      timestamp:  new Date().toISOString(),
-      formType:   'Contact',
-      name:       form.querySelector('[name="name"]').value.trim(),
-      email:      form.querySelector('[name="email"]').value.trim(),
-      phone:      form.querySelector('[name="phone"]').value.trim(),
-      city:       '',        // contact form doesn't have city field
-      howHelp:    '',        // contact form doesn't have this field
-      message:    form.querySelector('[name="message"]').value.trim(),
-      sourcePage: window.location.href,
-    };
-
-    try {
-      await submitToSheet(payload);
-      setSubmitState(btn, false);
-      showFeedback(success, error, 'success');
-      form.reset();
-    } catch (err) {
-      console.error('Contact form error:', err);
-      setSubmitState(btn, false);
-      showFeedback(success, error, 'error');
-      busy = false;
-    }
-  });
-
-  form.querySelectorAll('input, select, textarea').forEach(field => {
-    field.addEventListener('input',  () => field.classList.remove('invalid'));
-    field.addEventListener('change', () => field.classList.remove('invalid'));
-  });
-})();
-
-/* ================================================================
-   SMOOTH SCROLL  (for browsers that don't support CSS scroll-behavior)
-================================================================ */
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-  anchor.addEventListener('click', function(e) {
-    const id = this.getAttribute('href').slice(1);
-    if (!id) return;
-    const target = document.getElementById(id);
-    if (!target) return;
-    e.preventDefault();
-    const headerH = header.getBoundingClientRect().height;
-    const top = target.getBoundingClientRect().top + window.scrollY - headerH;
-    window.scrollTo({ top, behavior: 'smooth' });
-  });
-});

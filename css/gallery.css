@@ -1,0 +1,185 @@
+/* ================================================================
+   Gallery Page — gallery.css
+   Loaded in addition to styles.css on gallery.html only
+================================================================ */
+
+/* Gallery page always has solid nav (no hero behind it) */
+.gallery-page .site-header {
+  background: var(--white);
+  box-shadow: 0 2px 16px rgba(0,0,0,.1);
+}
+.gallery-page .nav-logo  { filter: none; }
+.gallery-page .nav-link  { color: var(--text); }
+.gallery-page .nav-link:hover { color: var(--blue); }
+.gallery-page .hamburger span { background: var(--text); }
+
+/* Active nav item */
+.nav-active {
+  color: var(--blue) !important;
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------------
+   Gallery Hero  (page title strip)
+--------------------------------------------------------------- */
+.gallery-hero {
+  background: var(--off-white);
+  border-bottom: 3px solid var(--blue);
+  padding: 7rem 0 3rem;   /* top accounts for fixed nav */
+  text-align: center;
+}
+.gallery-hero .eyebrow { margin-bottom: .6rem; }
+.gallery-hero h1 {
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  color: var(--text);
+  margin: .4rem 0 .9rem;
+}
+.gallery-hero p {
+  max-width: 580px;
+  margin: 0 auto;
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+/* ---------------------------------------------------------------
+   Gallery Main
+--------------------------------------------------------------- */
+.gallery-main {
+  padding: clamp(3rem, 6vw, 5rem) 0 clamp(4rem, 8vw, 6rem);
+}
+
+/* Category section */
+.gallery-category {
+  margin-bottom: clamp(3rem, 6vw, 5rem);
+}
+.gallery-category:last-child { margin-bottom: 0; }
+
+.gallery-cat-heading {
+  font-family: var(--font-ui);
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--blue);
+  padding-bottom: .65rem;
+  border-bottom: 2px solid var(--blue-light);
+  margin-bottom: 1.5rem;
+}
+
+/* Photo grid */
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .85rem;
+}
+
+/* Individual photo */
+.photo-item {
+  margin: 0;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--gray-100);
+  cursor: zoom-in;
+  position: relative;
+}
+.photo-item img {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+  transition: transform .4s var(--ease);
+}
+.photo-item:hover img {
+  transform: scale(1.03);
+}
+
+/* ---------------------------------------------------------------
+   Lightbox
+--------------------------------------------------------------- */
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(5, 10, 30, .95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  cursor: zoom-out;
+}
+.lightbox-overlay[hidden] { display: none; }
+
+.lightbox-img-wrap {
+  position: relative;
+  max-width: min(90vw, 1100px);
+  max-height: 88vh;
+}
+.lightbox-img-wrap img {
+  max-width: 100%;
+  max-height: 88vh;
+  object-fit: contain;
+  border-radius: var(--radius);
+  display: block;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+
+/* Prev / Next arrows */
+.lightbox-btn {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.2);
+  color: #fff;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .2s;
+  z-index: 1001;
+  font-size: 1.25rem;
+}
+.lightbox-btn:hover { background: rgba(255,255,255,.22); }
+.lightbox-prev { left: 1rem; }
+.lightbox-next { right: 1rem; }
+
+/* Close button */
+.lightbox-close {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.2);
+  color: #fff;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .2s;
+  z-index: 1001;
+  font-size: 1.25rem;
+}
+.lightbox-close:hover { background: rgba(255,255,255,.22); }
+
+/* ---------------------------------------------------------------
+   Responsive
+--------------------------------------------------------------- */
+@media (max-width: 900px) {
+  .photo-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 560px) {
+  .photo-grid { grid-template-columns: 1fr; }
+  .photo-item img { aspect-ratio: 16/10; }
+  .gallery-hero { padding-top: 6rem; }
+  .lightbox-prev { left: .5rem; }
+  .lightbox-next { right: .5rem; }
+}
