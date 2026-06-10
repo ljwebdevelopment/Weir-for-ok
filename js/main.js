@@ -49,7 +49,7 @@
    How to get it: follow the steps in google-apps-script.js, then
    Deploy → New Deployment → Web App → copy the URL.
 ================================================================ */
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxkpzJboi3qpq4i19CUlwHJmy-HuRLNVWeaq5PTvTD84wBk77fzC2s1Wq-QC31ScSVd/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwlANadMTv-zAS_WsyyUhtPdDYlLhKojs1-iOGA9CkEMYpvR2auoDTF0kosJSN6Y6sh/exec';
 
 /* ================================================================
    FORM SERVICE  (shared utilities used by every form)
